@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GFReader Engine-Powered</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <style>
+        :root[data-theme="light"] {
+            --bg: #ffffff; --surface: #f5f5f5; --text: #1a1a1a; --text-dim: #666666; --border: #e0e0e0; --accent: #005bb5; --hover: #e8e8e8;
+        }
+        :root[data-theme="dark"] {
+            --bg: #1e1e20; --surface: #252527; --text: #eaeaea; --text-dim: #999999; --border: #333333; --accent: #4da6ff; --hover: #2e2e30;
+        }
+        :root[data-theme="midnight"] {
+            --bg: #000000; --surface: #0a0a0a; --text: #d4d4d4; --text-dim: #777777; --border: #1f1f1f; --accent: #3b82f6; --hover: #141414;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* --- Scrollbars --- */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+        /* --- Layout --- */
+        #toolbar { border-bottom: 1px solid var(--border); padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; background: var(--surface); z-index: 10; }
+        .layout-grid { display: grid; grid-template-columns: 260px 320px 1fr; height: calc(100vh - 45px); }
+        .panel { border-right: 1px solid var(--border); overflow-y: auto; background: var(--bg); }
+        
+        /* --- Typography & Elements --- */
+        h1, h2, h3, h4 { font-weight: 500; }
+        button, select, input { background: var(--surface); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 4px; cursor: pointer; font-family: inherit; transition: border-color 0.2s; }
+        button:hover, select:hover, input:focus { border-color: var(--accent); outline: none; }
+        
+        .list-item { padding: 15px 20px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; display: flex; flex-direction: column; }
+        .list-item:hover { background: var(--hover); }
+        .list-item.active { border-left: 3px solid var(--accent); background: var(--surface); padding-left: 17px; }
+        
+        .feed-item { flex-direction: row; align-items: center; justify-content: space-between; }
+        .feed-title { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95em;}
+        .delete-btn { background: transparent; border: none; color: var(--text-dim); padding: 2px 6px; font-size: 1.2em; cursor: pointer; margin-left: 10px; border-radius: 4px;}
+        .delete-btn:hover { color: #ff5555; background: rgba(255,85,85,0.1); border-color: transparent; }
+
+        .article-view { padding: 40px; max-width: 850px; margin: 0 auto; overflow-y: auto; height: 100%; width: 100%; }
+        .article-title { margin-bottom: 10px; font-size: 1.8em; line-height: 1.3; }
+        .article-meta { color: var(--text-dim); font-size: 0.9em; margin-bottom: 30px; }
+        
+        .article-content { line-height: 1.7; font-size: 1.05em; color: var(--text); word-wrap: break-word; }
+        .article-content p { margin-bottom: 1.2em; }
+        .article-content img, .article-content figure { max-width: 100%; height: auto; border-radius: 6px; margin: 20px 0; display: block; }
+        .article-content a { color: var(--accent); text-decoration: none; }
+        .article-content a:hover { text-decoration: underline; }
+        .article-content ul, .article-content ol { margin: 0 0 1.2em 25px; }
+        .article-content blockquote { border-left: 4px solid var(--border); padding-left: 15px; margin-left: 0; margin-bottom: 1.2em; color: var(--text-dim); font-style: italic; background: var(--surface); padding: 10px 15px; border-radius: 0 4px 4px 0;}
+        .article-content pre, .article-content code { background: var(--surface); padding: 3px 6px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 0.9em; overflow-x: auto;}
+        .article-content pre { padding: 15px; margin-bottom: 1.2em; }
+
+        /* --- Settings Modal --- */
+        #settings-modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--surface); border: 1px solid var(--border); padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 100; }
+        #settings-modal.open { display: block; }
+        .backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99; backdrop-filter: blur(2px); }
+        .backdrop.open { display: block; }
+        .setting-group { margin-bottom: 20px; }
+        .setting-group label { display: block; font-size: 0.85em; color: var(--text-dim); margin-bottom: 8px; font-weight: 500; }
+        .setting-group input { width: 100%; padding: 10px; }
+        .setting-group input[type="checkbox"] { width: auto; margin-right: 10px; transform: scale(1.1); }
+
+        @media (max-width: 900px) {
+            .layout-grid { display: flex; flex-direction: column; }
+            .panel { border-right: none; border-bottom: 1px solid var(--border); height: 30vh; }
+            .article-view { height: 40vh; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="toolbar">
+    <div style="font-weight: 600; font-size: 1.1em; letter-spacing: -0.5px;">GFReader</div>
+    <div>
+        <select id="theme-select" onchange="changeTheme(this.value)">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="midnight">Midnight</option>
+        </select>
+        <button onclick="toggleSettings(true)" style="margin-left: 10px;">Config</button>
+    </div>
+</div>
+
+<div class="layout-grid">
+    <div class="panel" id="sidebar">
+        <div style="padding: 15px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--bg); z-index: 5;">
+            <input type="text" id="add-feed-input" placeholder="+ Add Feed URL..." style="width: 100%;" onkeypress="if(event.key === 'Enter') addFeed(this.value)">
+        </div>
+        <div id="feed-list"></div>
+    </div>
+    
+    <div class="panel" id="item-list"></div>
+    
+    <div class="article-view" id="article-view">
+        <h1 class="article-title" id="view-title">No selection</h1>
+        <div class="article-meta" id="view-meta"></div>
+        <div class="article-content" id="view-content">Select a feed and an article to begin reading.</div>
+    </div>
+</div>
+
+<div class="backdrop" id="backdrop" onclick="toggleSettings(false)"></div>
+<div id="settings-modal">
+    <h3 style="margin-bottom: 20px;">Advanced Configuration</h3>
+    <div class="setting-group">
+        <label>CORS Proxies (Comma-separated fallback chain)</label>
+        <input type="text" id="config-cors" placeholder="https://api.allorigins.win/raw?url=, https://corsproxy.io/?">
+    </div>
+    <div class="setting-group">
+        <label>IPFS / CID Gateway Routing</label>
+        <input type="text" id="config-ipfs" placeholder="https://ipfs.io/ipfs/">
+    </div>
+    <div class="setting-group" style="display: flex; align-items: center; margin-top: 25px;">
+        <input type="checkbox" id="config-obfuscate">
+        <label style="margin-bottom: 0;">Obfuscate Local Storage State</label>
+    </div>
+    <div style="margin-top: 30px; text-align: right;">
+        <button onclick="toggleSettings(false)" style="margin-right: 10px; background: transparent;">Cancel</button>
+        <button onclick="saveSettings()" style="background: var(--accent); color: #fff; border-color: var(--accent);">Save Config</button>
+    </div>
+</div>
+
+<script>
+    // =====================================================================
+    // CORE: GFEngine Implementation
+    // =====================================================================
+    class GFEngine {
+        constructor(config) {
+            this.containerId = config.container || 'gfe_default';
+            this.feedUrls = config.feeds || [];
+            this.corsProxies = config.corsProxies || [];
+            this.ipfsGateway = config.ipfsGateway || 'https://ipfs.io/ipfs/';
+            this.maxItems = config.maxItems || 50;
+            this.fetchTimeoutMs = config.fetchTimeoutMs || 8000;
+            
+            this.items = [];
+            this.cacheKey = `gfe_cache_${this.containerId}`;
+            this.isOffline = false; 
+        }
+
+        async fetchWithResilience(targetUrl) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), this.fetchTimeoutMs);
+
+            // Important: Always try direct fetch first (empty string), then cycle through proxies
+            const proxyList = ['', ...this.corsProxies.filter(p => p.trim() !== '')];
+
+            for (let proxy of proxyList) {
+                let fetchUrl = (proxy && targetUrl.startsWith('http'))
+                    ? proxy + encodeURIComponent(targetUrl)
+                    : targetUrl;
+
+                try {
+                    const res = await fetch(fetchUrl, { signal: controller.signal });
+                    if (res.ok) {
+                        clearTimeout(timeoutId);
+                        return await res.text();
+                    }
+                } catch (err) {
+                    console.warn(`GFEngine: Attempt failed for ${fetchUrl}. Trying next...`);
+                }
+            }
+            clearTimeout(timeoutId);
+            throw new Error(`All fetch attempts failed for ${targetUrl}`);
+        }
+
+        async fetchFeeds() {
+            try {
+                const fetchPromises = this.feedUrls.map(async (url) => {
+                    let targetUrl = url.startsWith('ipfs://') ? url.replace('ipfs://', this.ipfsGateway) : url;
+                    try {
+                        const rawText = await this.fetchWithResilience(targetUrl);
+                        const data = this.transformFeedData(rawText, url);
+                        const feedTitle = data.feed_title || url.split('/').pop() || 'Unknown Source';
+                        
+                        return (data.items || []).map(item => ({
+                            ...item,
+                            sourceName: feedTitle,
+                            _unixTime: item.date ? (new Date(item.date).getTime() || 0) : 0
+                        }));
+                    } catch (error) {
+                        console.error(`GFEngine: Graceful degradation for ${url}`, error);
+                        return []; 
+                    }
+                });
+
+                const results = await Promise.all(fetchPromises);
+                const fetchedItems = results.flat();
+
+                if (fetchedItems.length > 0) {
+                    this.items = fetchedItems.sort((a, b) => b._unixTime - a._unixTime).slice(0, this.maxItems);
+                    try { localStorage.setItem(this.cacheKey, JSON.stringify(this.items)); } catch (e) {}
+                    this.isOffline = false;
+                } else {
+                    throw new Error("Network isolated or feed failed to parse.");
+                }
+
+            } catch (error) {
+                try {
+                    const cachedData = localStorage.getItem(this.cacheKey);
+                    if (cachedData) {
+                        this.items = JSON.parse(cachedData);
+                        this.isOffline = true;
+                    } else { this.items = []; }
+                } catch (e) { this.items = []; }
+            }
+        }
+
+        transformFeedData(rawText, sourceUrl) {
+            try {
+                const data = JSON.parse(rawText);
+                if (data.items) return data; 
+            } catch (e) {}
+
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(rawText, "text/xml");
+
+            if (xmlDoc.querySelector("parsererror")) {
+                console.warn(`GFEngine: Invalid XML/JSON format from ${sourceUrl}`);
+                return { feed_title: 'Unknown Format', items: [] };
+            }
+
+            const isAtom = xmlDoc.querySelector("feed") !== null;
+            const isRSS = xmlDoc.querySelector("rss") !== null || xmlDoc.querySelector("channel") !== null;
+
+            if (!isAtom && !isRSS) {
+                console.warn(`GFEngine: Unrecognized feed structure from ${sourceUrl}`);
+                return { feed_title: 'Unrecognized Format', items: [] };
+            }
+
+            const feedTitleNode = xmlDoc.querySelector("channel > title, feed > title");
+            const feedTitle = feedTitleNode ? feedTitleNode.textContent : sourceUrl.split('/').pop();
+
+            const entries = Array.from(xmlDoc.querySelectorAll(isAtom ? "entry" : "item"));
+            const normalizedItems = entries.map(entry => {
+                const getVal = (selector) => {
+                    const node = entry.querySelector(selector);
+                    return node ? node.textContent.trim() : '';
+                };
+
+                const getNamespacedVal = (tagName) => {
+                    const nodes = entry.getElementsByTagNameNS('*', tagName);
+                    return nodes.length > 0 ? nodes[0].textContent.trim() : '';
+                };
+
+                let link = '';
+                const linkNode = entry.querySelector("link");
+                if (linkNode) {
+                    link = linkNode.getAttribute("href") || linkNode.textContent;
+                }
+
+                return {
+                    id: getVal("guid") || getVal("id") || link || Math.random().toString(36).substr(2, 9),
+                    title: getVal("title") || "Untitled",
+                    content: getNamespacedVal("encoded") || getVal("description") || getVal("content") || getVal("summary") || "",
+                    date: getVal("pubDate") || getVal("updated") || getVal("published") || getVal("date") || "",
+                    author: getVal("author > name") || getNamespacedVal("creator") || getVal("author") || "",
+                    link: link
+                };
+            });
+
+            return { feed_title: feedTitle, items: normalizedItems };
+        }
+    }
+
+    // =====================================================================
+    // APP LOGIC: UI and State Management
+    // =====================================================================
+    
+    // Robust Config Loading (Prevents undefined errors on older saves)
+    const defaultConfig = {
+        theme: 'dark',
+        corsProxies: 'https://api.allorigins.win/raw?url=, https://corsproxy.io/?',
+        ipfsGateway: 'https://ipfs.io/ipfs/',
+        obfuscateState: false
+    };
+    
+    let savedConfig = {};
+    try { savedConfig = JSON.parse(localStorage.getItem('reader_config')) || {}; } catch(e) {}
+    let config = { ...defaultConfig, ...savedConfig };
+
+    let feeds = loadFeedsState() || [];
+    let currentFeedData = [];
+    let isOfflineMode = false;
+
+    // --- Initialization ---
+    document.documentElement.setAttribute('data-theme', config.theme);
+    document.getElementById('theme-select').value = config.theme;
+    renderFeeds();
+    
+    if(feeds.length > 0) fetchFeed(feeds[0].url, 0);
+
+    // --- Core Functions ---
+    function renderFeeds() {
+        const feedList = document.getElementById('feed-list');
+        feedList.innerHTML = '';
+        
+        feeds.forEach((feed, index) => {
+            const el = document.createElement('div');
+            el.className = 'list-item feed-item';
+            
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'feed-title';
+            titleSpan.textContent = feed.name || feed.url;
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '×';
+            deleteBtn.title = "Remove Feed";
+            deleteBtn.onclick = (e) => {
+                e.stopPropagation(); // Prevent triggering the feed selection
+                if(confirm(`Remove ${feed.name}?`)) {
+                    feeds.splice(index, 1);
+                    saveFeedsState();
+                    renderFeeds();
+                    if(feeds.length > 0) {
+                        fetchFeed(feeds[0].url, 0);
+                    } else {
+                        document.getElementById('item-list').innerHTML = '';
+                        clearArticleView();
+                    }
+                }
+            };
+
+            el.appendChild(titleSpan);
+            el.appendChild(deleteBtn);
+            
+            el.onclick = () => {
+                document.querySelectorAll('#feed-list .list-item').forEach(n => n.classList.remove('active'));
+                el.classList.add('active');
+                fetchFeed(feed.url, index);
+            };
+            
+            feedList.appendChild(el);
+        });
+
+        // Ensure active class on load
+        if(feeds.length > 0) {
+            const items = document.querySelectorAll('#feed-list .list-item');
+            if(items[0] && currentFeedData.length === 0) items[0].classList.add('active');
+        }
+    }
+
+    function clearArticleView() {
+        document.getElementById('view-title').textContent = 'No selection';
+        document.getElementById('view-meta').textContent = '';
+        document.getElementById('view-content').textContent = 'Select a feed and an article to begin reading.';
+    }
+
+    function changeTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        config.theme = theme;
+        saveConfig();
+    }
+
+    function addFeed(url) {
+        if (!url || !url.trim()) return;
+        url = url.trim();
+        if(!url.startsWith('http') && !url.startsWith('ipfs')) url = 'https://' + url;
+        
+        feeds.push({ url: url, name: url.split('/').pop() || 'New Feed' });
+        document.getElementById('add-feed-input').value = '';
+        saveFeedsState();
+        renderFeeds();
+        fetchFeed(url, feeds.length - 1);
+        
+        const items = document.querySelectorAll('#feed-list .list-item');
+        document.querySelectorAll('#feed-list .list-item').forEach(n => n.classList.remove('active'));
+        if(items[feeds.length - 1]) items[feeds.length - 1].classList.add('active');
+    }
+
+    async function fetchFeed(targetUrl, index) {
+        const listEl = document.getElementById('item-list');
+        listEl.innerHTML = '<div style="padding: 20px; color: var(--text-dim); text-align: center;">Syncing via GFEngine...</div>';
+
+        const rawProxies = config.corsProxies !== undefined ? config.corsProxies : '';
+        const proxiesArray = rawProxies.split(',').map(p => p.trim()).filter(p => p.length > 0);
+
+        const engine = new GFEngine({
+            container: `feed_${index}`, 
+            feeds: [targetUrl],
+            corsProxies: proxiesArray,
+            ipfsGateway: config.ipfsGateway,
+            maxItems: 30
+        });
+
+        await engine.fetchFeeds();
+
+        if (engine.items && engine.items.length > 0) {
+            const parsedName = engine.items[0].sourceName;
+            if (parsedName && parsedName !== 'Unknown Format' && feeds[index] && feeds[index].name === targetUrl) {
+                feeds[index].name = parsedName;
+                saveFeedsState();
+                renderFeeds();
+                const items = document.querySelectorAll('#feed-list .list-item');
+                if(items[index]) items[index].classList.add('active');
+            }
+
+            currentFeedData = engine.items;
+            isOfflineMode = engine.isOffline;
+            renderItems();
+        } else {
+            listEl.innerHTML = `<div style="padding: 20px; color: #ff5555; font-size: 0.9em; text-align: center;">No intel found.<br>Check URL or modify CORS Settings.</div>`;
+            currentFeedData = [];
+            clearArticleView();
+        }
+    }
+
+    function renderItems() {
+        const list = document.getElementById('item-list');
+        list.innerHTML = '';
+        
+        if (isOfflineMode) {
+            const offlineWarning = document.createElement('div');
+            offlineWarning.style.cssText = "padding: 10px 20px; background: rgba(255,170,0,0.1); color: #ffaa00; font-size: 0.85em; text-align: center; border-bottom: 1px solid rgba(255,170,0,0.3); font-weight: 500;";
+            offlineWarning.textContent = "⚠ DISPLAYING OFFLINE CACHE";
+            list.appendChild(offlineWarning);
+        }
+
+        currentFeedData.forEach((item, idx) => {
+            const el = document.createElement('div');
+            el.className = 'list-item';
+            
+            const title = document.createElement('h4');
+            title.style.marginBottom = '5px';
+            title.style.lineHeight = '1.3';
+            title.textContent = item.title || "Untitled";
+            
+            const date = document.createElement('div');
+            date.style.fontSize = '0.8em';
+            date.style.color = 'var(--text-dim)';
+            date.textContent = item._unixTime > 0 ? new Date(item._unixTime).toLocaleDateString() : "";
+
+            el.appendChild(title);
+            el.appendChild(date);
+            
+            el.onclick = () => {
+                document.querySelectorAll('#item-list .list-item').forEach(n => n.classList.remove('active'));
+                el.classList.add('active');
+                renderArticle(idx);
+            };
+            list.appendChild(el);
+        });
+    }
+
+    function renderArticle(index) {
+        const item = currentFeedData[index];
+        if (!item) return;
+
+        const dateStr = item._unixTime > 0 ? new Date(item._unixTime).toLocaleDateString() : "";
+        const authorStr = item.author ? `by ${item.author}` : '';
+
+        const titleEl = document.getElementById('view-title');
+        titleEl.innerHTML = '';
+        if (item.link) {
+            const a = document.createElement('a');
+            a.href = item.link;
+            a.target = "_blank";
+            a.rel = "noopener noreferrer";
+            a.style.color = "inherit";
+            a.textContent = item.title;
+            titleEl.appendChild(a);
+        } else {
+            titleEl.textContent = item.title;
+        }
+
+        document.getElementById('view-meta').textContent = `${dateStr} ${authorStr} — via ${item.sourceName}`;
+        
+        const contentDiv = document.getElementById('view-content');
+        
+        if (window.DOMPurify) {
+            contentDiv.innerHTML = DOMPurify.sanitize(item.content || '<i>No content available.</i>', { 
+                ADD_ATTR: ['target', 'rel'],
+                ADD_TAGS: ['a', 'p', 'br', 'b', 'i', 'strong', 'em', 'img', 'figure', 'figcaption', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'blockquote', 'code', 'pre', 'hr', 'table', 'tr', 'td', 'th'] 
+            });
+            
+            contentDiv.querySelectorAll('a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
+        } else {
+            contentDiv.textContent = item.content || 'No content available.';
+        }
+    }
+
+    // --- Settings & Storage ---
+    function toggleSettings(show) {
+        const modal = document.getElementById('settings-modal');
+        const backdrop = document.getElementById('backdrop');
+        if (show) {
+            document.getElementById('config-cors').value = config.corsProxies;
+            document.getElementById('config-ipfs').value = config.ipfsGateway;
+            document.getElementById('config-obfuscate').checked = config.obfuscateState;
+            modal.classList.add('open');
+            backdrop.classList.add('open');
+        } else {
+            modal.classList.remove('open');
+            backdrop.classList.remove('open');
+        }
+    }
+
+    function saveSettings() {
+        config.corsProxies = document.getElementById('config-cors').value;
+        config.ipfsGateway = document.getElementById('config-ipfs').value;
+        const oldObfuscate = config.obfuscateState;
+        config.obfuscateState = document.getElementById('config-obfuscate').checked;
+        saveConfig();
+        if(oldObfuscate !== config.obfuscateState) saveFeedsState();
+        toggleSettings(false);
+    }
+
+    function saveConfig() { localStorage.setItem('reader_config', JSON.stringify(config)); }
+
+    function saveFeedsState() {
+        const dataStr = JSON.stringify(feeds);
+        const toSave = config.obfuscateState ? btoa(encodeURIComponent(dataStr)) : dataStr;
+        localStorage.setItem('reader_feeds', toSave);
+    }
+
+    function loadFeedsState() {
+        const stored = localStorage.getItem('reader_feeds');
+        if (!stored) return null;
+        try {
+            // Check if string looks like base64 before blindly trusting the config setting
+            // to prevent crashes if obfuscation was turned off but data is still obfuscated.
+            const isBase64 = !stored.startsWith('[') && !stored.startsWith('{');
+            if (isBase64) return JSON.parse(decodeURIComponent(atob(stored)));
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse feeds from storage", e);
+            return null; 
+        }
+    }
+</script>
+
+</body>
+</html>
