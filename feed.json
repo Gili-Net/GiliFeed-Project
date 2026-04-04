@@ -1,4 +1,7 @@
- {
+/**
+ * This is the syntax which is most suitable for the GiliFeed system.
+ */
+{
   "feed_title": "Latest News",
   "feed_url": "https://gili-net.github.io/feedlib/feed.json",
   "description": "The Latest News in GiliNet",
