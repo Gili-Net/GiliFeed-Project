@@ -1,0 +1,28 @@
+ {
+  "feed_title": "Latest News",
+  "feed_url": "https://gili-net.github.io/feedlib/feed.json",
+  "description": "The Latest News in GiliNet",
+  "items": [
+    {
+      "id": "001",
+      "title": "Website Launched",
+      "date": "2026-04-03",
+      "content": "The Core has launched the main website for GiliNet which will contain the indexing system for the wings and will contain all the relevant documentations for the suggested policies and procedures for the organization. It will also contain the indexing for the ongoing and past projects of GiliNet and also the new updates from the organization. The website will be hosted in a single web server but will also be available on IPFS and will allow anybody to copy its Content Identifier(CID) which others could copy and then make mirrors of the website as a prevention to hostile takedowns and significantly mitigating DDoS.",
+      "author": "The Core"
+    },
+    {
+      "id": "002",
+      "title": "GPRP v1.2 has been released",
+      "date": "2026-04-03",
+      "content": "We are officially publishing the GiliNet Organization and Architecture Guidelines. This document serves as our North Star for maintaining system integrity, scalability, and internal structural clarity as we continue to evolve. The following is the documentation for the guidelines. This document serves as the definitive legal and operational framework for the GiliNet PRISEC (Privacy and Security) division. It dictates the rules of engagement for security research, vulnerability hunting, and infrastructure modification. The policy discusses about prohibition of vulnerability hunts in highly litigated closed source systems, but instead to openly do vulnerability hunts and PRISEC related research in open-source systems.",
+      "author": "The Core"
+    }, 
+    {
+      "id": "003",
+      "title": "Organizational Guideline is Released for Adoption",
+      "date": "2026-04-03",
+      "content": "The policy and guidelines for organizational structuring has been released.The guidelines discusses about radical decentralization in the organization for it's own members' compatibility and for the survival of the organization incase of hostile takedowns or unpopular leadership. It also talks about the philosophy of the organization and the values it preaches amd its own implementation of those values.",
+      "author": "The Core"
+}
+  ]
+}
